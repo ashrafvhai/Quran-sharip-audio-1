@@ -1,0 +1,6 @@
+{
+  "name": "নূরানী কুরআন - Al-Quran Player",
+  "description": "১১৪ সূরার সম্পূর্ণ অডিও তিলাওয়াত, একাধিক বিশ্বখ্যাত ক্বারীর কণ্ঠ, অফলাইন ডাউনলোড এবং প্রশান্তিময় ব্যাকগ্রাউন্ড ভিডিও সমৃদ্ধ ডিজিটাল কুরআন প্লেয়ার।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

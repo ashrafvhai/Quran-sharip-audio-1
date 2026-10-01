@@ -45,9 +45,15 @@ export const RecitersView: React.FC<RecitersViewProps> = ({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center font-bold text-sm text-white/90 bg-gradient-to-tr from-emerald-800 to-teal-900">
+          <div className="w-full h-full flex items-center justify-center font-bold text-sm text-white/80 bg-gradient-to-tr from-emerald-800 to-teal-900">
             {qari.nameEnglish.charAt(0)}
           </div>
+        )}
+
+        {qari.emoji && (
+          <span className="absolute -top-0.5 -right-0.5 text-xs bg-slate-950/90 rounded-full w-5 h-5 flex items-center justify-center border border-white/20 z-10">
+            {qari.emoji}
+          </span>
         )}
 
         {showNewBadge && (
@@ -57,11 +63,11 @@ export const RecitersView: React.FC<RecitersViewProps> = ({
         )}
       </div>
 
-      <span className="text-xs font-semibold text-white/90 truncate max-w-[80px] group-hover:text-white">
-        {qari.nameEnglish.replace('Sheikh ', '')}
+      <span className="text-xs font-semibold text-white/90 truncate max-w-[85px] group-hover:text-white font-bangla">
+        {qari.nameBangla.replace('শাইখ ', '').replace('ক্বারী ', '')}
       </span>
-      <span className="text-[10px] text-white/40 truncate max-w-[80px]">
-        {qari.countryEnglish}
+      <span className="text-[10px] text-white/40 truncate max-w-[85px] font-mono">
+        {qari.nameEnglish.replace('Sheikh ', '')}
       </span>
     </button>
   );

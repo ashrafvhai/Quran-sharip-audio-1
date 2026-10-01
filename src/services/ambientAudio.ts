@@ -46,6 +46,11 @@ class AmbientAudioService {
   }
 
   public playSound(soundId: string) {
+    if (soundId === 'none') {
+      this.stopSound();
+      return;
+    }
+
     this.initContext();
     if (!this.ctx || !this.masterGain) return;
 
@@ -53,8 +58,6 @@ class AmbientAudioService {
 
     this.stopSound();
     this.currentSoundId = soundId;
-
-    if (soundId === 'none') return;
 
     switch (soundId) {
       case 'rain':

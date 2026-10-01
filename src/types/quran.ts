@@ -22,6 +22,7 @@ export interface Qari {
   countryBangla: string;
   countryEnglish: string;
   flag: string;
+  emoji?: string;
   descriptionBangla: string;
   bioEnglish?: string;
   server: string; // e.g. "server16.mp3quran.net/bader"
@@ -66,4 +67,4 @@ export interface DownloadedSurah {
   downloadedAt: number;
 }
 
-export type NavigationTab = 'home' | 'reciters' | 'playlists' | 'settings' | 'search';
+export type NavigationTab = 'player' | 'home' | 'reciters' | 'playlists' | 'settings' | 'search';

@@ -45,8 +45,8 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-white pb-36 animate-fade-in select-none">
       <div className="max-w-md mx-auto px-4 pt-6">
-        <h1 className="text-3xl font-extrabold tracking-tight text-white mb-4">
-          Playlists & Offline
+        <h1 className="text-3xl font-extrabold tracking-tight text-white mb-4 font-bangla">
+          প্লেলিস্ট ও অফলাইন
         </h1>
 
         {/* Offline Storage Banner */}
@@ -56,11 +56,11 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
               <WifiOff size={20} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">
-                {downloadedSurahs.length} Offline Surahs
+              <h3 className="text-sm font-bold text-white font-bangla">
+                {downloadedSurahs.length} টি সূরা অফলাইনে সংরক্ষিত
               </h3>
-              <p className="text-xs text-white/50">
-                {formatBytes(totalBytes)} storage used
+              <p className="text-xs text-white/50 font-mono">
+                {formatBytes(totalBytes)} ব্যবহৃত স্টোরেজ
               </p>
             </div>
           </div>
@@ -68,18 +68,18 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
           {downloadedSurahs.length > 0 && (
             <button
               onClick={onClearAllOffline}
-              className="text-xs font-semibold text-rose-300 hover:text-rose-200 bg-rose-950/40 border border-rose-500/30 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+              className="text-xs font-semibold text-rose-300 hover:text-rose-200 bg-rose-950/40 border border-rose-500/30 px-3 py-1.5 rounded-xl transition-colors cursor-pointer font-bangla"
             >
-              Clear All
+              সব মুছুন
             </button>
           )}
         </div>
 
         {/* Downloaded Surahs List */}
         <div className="mb-8">
-          <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5">
+          <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5 font-bangla">
             <HardDrive size={15} className="text-emerald-400" />
-            <span>Downloaded Recordings</span>
+            <span>সংরক্ষিত তিলাওয়াতসমূহ (ইন্টারনেট ছাড়া চলবে)</span>
           </h2>
 
           <div className="space-y-1.5">
@@ -93,11 +93,11 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                     {item.surahId}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs font-bold text-white truncate">
-                      Surah {item.surahNameBangla}
+                    <h4 className="text-xs font-bold text-white truncate font-bangla">
+                      সূরা {item.surahNameBangla}
                     </h4>
                     <p className="text-[11px] text-white/40 truncate">
-                      {item.qariNameBangla} · {formatBytes(item.sizeBytes)}
+                      ক্বারী: {item.qariNameBangla} · {formatBytes(item.sizeBytes)}
                     </p>
                   </div>
                 </div>
@@ -106,7 +106,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   <button
                     onClick={() => onPlaySurah(item.surahId, item.qariId)}
                     className="p-2 rounded-xl bg-white text-black hover:bg-white/90 transition-colors cursor-pointer"
-                    title="Play"
+                    title="শুনুন"
                   >
                     <Play size={13} fill="currentColor" />
                   </button>
@@ -114,7 +114,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   <button
                     onClick={() => handleExportMP3(item)}
                     className="p-2 text-white/50 hover:text-white transition-colors cursor-pointer"
-                    title="Save MP3 file"
+                    title="মোবাইলে MP3 সেভ করুন"
                   >
                     <FolderDown size={16} />
                   </button>
@@ -122,7 +122,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   <button
                     onClick={() => onDeleteDownload(item.qariId, item.surahId)}
                     className="p-2 text-white/40 hover:text-rose-400 transition-colors cursor-pointer"
-                    title="Delete"
+                    title="ডিলিট"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -132,8 +132,8 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
 
             {downloadedSurahs.length === 0 && (
               <div className="text-center py-8 px-4 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
-                <p className="text-xs text-white/40">
-                  No downloaded surahs yet. Tap the cloud icon on any surah to listen offline anytime.
+                <p className="text-xs text-white/40 font-bangla">
+                  এখনও কোনো সূরা অফলাইনে ডাউনলোড করা হয়নি। সূরা তালিকার ক্লাউড আইকনে ট্যাপ করলেই সরাসরি ডিভাইসে সংরক্ষিত হয়ে যাবে।
                 </p>
               </div>
             )}
@@ -142,9 +142,9 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
 
         {/* Favorite Surahs */}
         <div>
-          <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5">
+          <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5 font-bangla">
             <Star size={15} className="text-amber-400 fill-amber-400" />
-            <span>Favorite Surahs</span>
+            <span>পছন্দের সূরাসমূহ</span>
           </h2>
 
           <div className="space-y-1">
@@ -161,11 +161,16 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                       {s.id}
                     </span>
                     <div>
-                      <h4 className="text-xs font-bold text-white">
-                        {s.nameEnglish} ({s.nameArabic})
-                      </h4>
-                      <p className="text-[11px] text-white/40">
-                        {s.meaningEnglish} · {s.versesCount} verses
+                      <div className="flex items-baseline gap-1.5">
+                        <h4 className="text-xs font-bold text-white font-bangla">
+                          সূরা {s.nameBangla}
+                        </h4>
+                        <span className="font-arabic text-xs font-bold text-emerald-300">
+                          ({s.nameArabic})
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-white/40 font-mono">
+                        Surah {s.nameEnglish} · {s.versesCount} আয়াত
                       </p>
                     </div>
                   </div>

@@ -7,7 +7,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BottomNav } from './components/BottomNav';
 import { MiniPlayer } from './components/MiniPlayer';
 import { FullScreenPlayer } from './components/FullScreenPlayer';
-import { HomeView } from './components/HomeView';
+import { MainAudioPlayerView } from './components/MainAudioPlayerView';
+import { QuickQariPickerModal } from './components/QuickQariPickerModal';
 import { RecitersView } from './components/RecitersView';
 import { ReciterDetailView } from './components/ReciterDetailView';
 import { PlaylistsView } from './components/PlaylistsView';
@@ -27,6 +28,7 @@ import {
   DownloadedSurah,
   NavigationTab,
   Qari,
+  RepeatMode,
   Surah
 } from './types/quran';
 import {
@@ -39,18 +41,48 @@ import {
 import { ambientAudio } from './services/ambientAudio';
 
 export default function App() {
-  // Navigation
-  const [activeTab, setActiveTab] = useState<NavigationTab>('reciters');
-  const [selectedReciterDetail, setSelectedReciterDetail] = useState<Qari | null>(QARIS[0]); // default to Bader Al-Turki like video
+  // Navigation: Audio Player is the primary default view!
+  const [activeTab, setActiveTab] = useState<NavigationTab>('player');
+
+  // Reciter: By default NO voice is preselected unless user previously saved one in localStorage!
+  const [currentQari, setCurrentQari] = useState<Qari | null>(() => {
+    try {
+      const savedId = localStorage.getItem('quran_selected_qari_id');
+      if (savedId) {
+        const found = QARIS.find((q) => q.id === savedId);
+        if (found) return found;
+      }
+    } catch {}
+    return null; // By default no voice is preselected
+  });
+
+  const [selectedReciterDetail, setSelectedReciterDetail] = useState<Qari | null>(() => {
+    try {
+      const savedId = localStorage.getItem('quran_selected_qari_id');
+      if (savedId) {
+        return QARIS.find((q) => q.id === savedId) || null;
+      }
+    } catch {}
+    return null;
+  });
+
+  // If no Qari has been selected yet, open the Qari Picker Modal right away so user picks their Shaykh
+  const [isQariPickerOpen, setIsQariPickerOpen] = useState<boolean>(() => {
+    try {
+      return !localStorage.getItem('quran_selected_qari_id');
+    } catch {
+      return true;
+    }
+  });
 
   // Audio Playback
-  const [currentSurah, setCurrentSurah] = useState<Surah>(SURAHS[11]); // Surah Yusuf (12) like in video!
-  const [currentQari, setCurrentQari] = useState<Qari>(QARIS[0]); // Bader Al-Turki
+  const [currentSurah, setCurrentSurah] = useState<Surah>(SURAHS[0]); // Surah Al-Fatihah
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [volume, setVolume] = useState<number>(1);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
 
   // Hidden native audio element ref
@@ -59,10 +91,10 @@ export default function App() {
   // Full Screen Player visibility
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState<boolean>(false);
 
-  // Background Ambient Sound & Visuals
-  const [activeAmbientSound, setActiveAmbientSound] = useState<AmbientSoundItem>(AMBIENT_SOUNDS[1]); // default to Rain like in video
-  const [ambientVolume, setAmbientVolume] = useState<number>(0.45);
-  const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(THEMES[0]); // Mountain Rain
+  // Background Ambient Sound & Visuals (Default: SILENT - no hissing or whooshing noise on enter!)
+  const [activeAmbientSound, setActiveAmbientSound] = useState<AmbientSoundItem>(AMBIENT_SOUNDS[0]); // 'none'
+  const [ambientVolume, setAmbientVolume] = useState<number>(0.4);
+  const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(THEMES[0]); // Holy Kaaba Makkah
   const [isAmbientModalOpen, setIsAmbientModalOpen] = useState<boolean>(false);
 
   // Sleep Timer
@@ -84,7 +116,7 @@ export default function App() {
       const saved = localStorage.getItem('ay_fav_surahs');
       if (saved) return new Set(JSON.parse(saved));
     } catch {}
-    return new Set([12, 1, 18, 36, 55, 67]); // Yusuf pre-favorited as in video
+    return new Set([1, 12, 18, 36, 55, 67]);
   });
 
   const [favoriteQariIds, setFavoriteQariIds] = useState<Set<string>>(() => {
@@ -92,7 +124,7 @@ export default function App() {
       const saved = localStorage.getItem('ay_fav_qaris');
       if (saved) return new Set(JSON.parse(saved));
     } catch {}
-    return new Set(['fares_abbad', 'bader_al_turki']); // matches video favorites!
+    return new Set(['abdurrahman_sudais', 'mishary_alafasy', 'maher_almuaiqly']);
   });
 
   // Toast Notification
@@ -101,6 +133,13 @@ export default function App() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  // -------------------------------------------------------------
+  // Guaranteed silent on initial load - stop any lingering sounds
+  // -------------------------------------------------------------
+  useEffect(() => {
+    ambientAudio.stopSound();
+  }, []);
 
   // -------------------------------------------------------------
   // Load offline storage
@@ -120,7 +159,7 @@ export default function App() {
   // Ambient Sound Controller (Web Audio API)
   // -------------------------------------------------------------
   useEffect(() => {
-    if (activeAmbientSound.soundId !== 'none') {
+    if (activeAmbientSound && activeAmbientSound.soundId !== 'none') {
       ambientAudio.playSound(activeAmbientSound.soundId);
     } else {
       ambientAudio.stopSound();
@@ -148,6 +187,12 @@ export default function App() {
   // Recitation Audio Source Controller
   // -------------------------------------------------------------
   useEffect(() => {
+    if (!currentQari) {
+      setAudioSrc(null);
+      setIsPlaying(false);
+      return;
+    }
+
     let active = true;
     let objectUrl: string | null = null;
 
@@ -216,23 +261,25 @@ export default function App() {
     if (!('mediaSession' in navigator) || !currentSurah) return;
 
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: `${currentSurah.nameEnglish} (${currentSurah.nameArabic})`,
-      artist: currentQari.nameEnglish,
-      album: 'Al-Quran Recitation',
+      title: `${currentSurah.nameBangla} (${currentSurah.nameArabic})`,
+      artist: currentQari ? `${currentQari.nameBangla} • ${currentQari.nameEnglish}` : 'আল-কুরআন তিলাওয়াত',
+      album: 'Al-Quran Recitation Audio Player',
       artwork: [
         {
-          src: currentQari.avatarUrl || '/src/assets/images/holy_kaaba_makkah_1790527911160.jpg',
+          src: currentQari?.avatarUrl || currentTheme.imageUrl || '/src/assets/images/holy_kaaba_makkah_1790527911160.jpg',
           sizes: '512x512',
           type: 'image/jpeg'
         }
       ]
     });
 
-    navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (currentQari) setIsPlaying(true);
+    });
     navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
     navigator.mediaSession.setActionHandler('previoustrack', () => handlePrevSurah());
     navigator.mediaSession.setActionHandler('nexttrack', () => handleNextSurah());
-  }, [currentSurah, currentQari]);
+  }, [currentSurah, currentQari, currentTheme]);
 
   // -------------------------------------------------------------
   // Sleep Timer countdown
@@ -244,7 +291,7 @@ export default function App() {
       setIsPlaying(false);
       setSleepTimerMinutes(null);
       setSleepRemainingSeconds(null);
-      showToast('🌙 Sleep timer finished, recitation stopped.');
+      showToast('🌙 স্লিপ টাইমার শেষ, তিলাওয়াত বন্ধ হয়েছে।');
       return;
     }
 
@@ -259,13 +306,13 @@ export default function App() {
     setSleepTimerMinutes(minutes);
     if (minutes === null) {
       setSleepRemainingSeconds(null);
-      showToast('Sleep timer turned off');
+      showToast('স্লিপ টাইমার বন্ধ করা হয়েছে');
     } else if (minutes === -1) {
       setSleepRemainingSeconds(null);
-      showToast('Will stop at end of surah');
+      showToast('বর্তমান সূরা শেষে তিলাওয়াত বন্ধ হবে');
     } else {
       setSleepRemainingSeconds(minutes * 60);
-      showToast(`Sleep timer set to ${minutes} minutes`);
+      showToast(`স্লিপ টাইমার: ${minutes} মিনিটে সেট করা হয়েছে`);
     }
   };
 
@@ -273,6 +320,11 @@ export default function App() {
   // Playback Controls
   // -------------------------------------------------------------
   const handlePlayPause = () => {
+    if (!currentQari) {
+      setIsQariPickerOpen(true);
+      showToast('অনুগ্রহ করে তিলাওয়াত শুনতে প্রথমে একজন ক্বারী নির্বাচন করুন');
+      return;
+    }
     setIsPlaying(!isPlaying);
   };
 
@@ -281,7 +333,7 @@ export default function App() {
     const next = SURAHS.find((s) => s.id === nextId);
     if (next) {
       setCurrentSurah(next);
-      setIsPlaying(true);
+      if (currentQari) setIsPlaying(true);
     }
   };
 
@@ -290,7 +342,7 @@ export default function App() {
     const prev = SURAHS.find((s) => s.id === prevId);
     if (prev) {
       setCurrentSurah(prev);
-      setIsPlaying(true);
+      if (currentQari) setIsPlaying(true);
     }
   };
 
@@ -298,7 +350,14 @@ export default function App() {
     const speeds = [0.75, 1.0, 1.25, 1.5];
     const nextIdx = (speeds.indexOf(playbackSpeed) + 1) % speeds.length;
     setPlaybackSpeed(speeds[nextIdx]);
-    showToast(`Speed: ${speeds[nextIdx]}x`);
+    showToast(`স্পিড: ${speeds[nextIdx]}x`);
+  };
+
+  const handleCycleRepeatMode = () => {
+    const modes: RepeatMode[] = ['off', 'all', 'one'];
+    const next = modes[(modes.indexOf(repeatMode) + 1) % modes.length];
+    setRepeatMode(next);
+    showToast(next === 'one' ? 'বর্তমান সূরা রিপিট চালু' : next === 'all' ? 'সব সূরা রিপিট চালু' : 'রিপিট বন্ধ');
   };
 
   const handleSeek = (newTime: number) => {
@@ -320,9 +379,18 @@ export default function App() {
     if (sleepTimerMinutes === -1) {
       setIsPlaying(false);
       setSleepTimerMinutes(null);
-      showToast('Surah completed, sleep timer ended');
+      showToast('সূরা সমাপ্ত, স্লিপ টাইমার অনুসারে তিলাওয়াত বন্ধ হলো');
       return;
     }
+
+    if (repeatMode === 'one') {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
+      }
+      return;
+    }
+
     handleNextSurah();
   };
 
@@ -330,16 +398,23 @@ export default function App() {
   // Offline Downloads (IndexedDB)
   // -------------------------------------------------------------
   const isSurahDownloaded = (surahId: number): boolean => {
+    if (!currentQari) return false;
     return downloadedSurahs.some(
       (d) => d.qariId === currentQari.id && d.surahId === surahId
     );
   };
 
   const handleToggleDownload = async (surah: Surah) => {
+    if (!currentQari) {
+      setIsQariPickerOpen(true);
+      showToast('ডাউনলোড করতে প্রথমে একজন ক্বারী নির্বাচন করুন');
+      return;
+    }
+
     if (isSurahDownloaded(surah.id)) {
       await deleteOfflineSurah(currentQari.id, surah.id);
       await refreshOfflineList();
-      showToast(`Removed Surah ${surah.nameEnglish} from offline`);
+      showToast(`সূরা ${surah.nameBangla} অফলাইন থেকে মোছা হয়েছে`);
       return;
     }
 
@@ -347,7 +422,7 @@ export default function App() {
 
     setDownloadingIds((prev) => new Set(prev).add(surah.id));
     setDownloadProgressMap((prev) => ({ ...prev, [surah.id]: 0 }));
-    showToast(`Downloading Surah ${surah.nameEnglish}...`);
+    showToast(`সূরা ${surah.nameBangla} ডাউনলোড শুরু হচ্ছে...`);
 
     const audioUrl = getSurahAudioUrl(currentQari, surah.id);
 
@@ -356,9 +431,9 @@ export default function App() {
         setDownloadProgressMap((prev) => ({ ...prev, [surah.id]: percent }));
       });
       await refreshOfflineList();
-      showToast(`Surah ${surah.nameEnglish} saved for offline!`);
+      showToast(`সূরা ${surah.nameBangla} সফলভাবে অফলাইনে সংরক্ষিত!`);
     } catch (err: any) {
-      showToast(`Download failed: ${err.message || 'Check connection'}`);
+      showToast(`ডাউনলোড ব্যর্থ হয়েছে: ${err.message || 'ইন্টারনেট চেক করুন'}`);
     } finally {
       setDownloadingIds((prev) => {
         const next = new Set(prev);
@@ -373,27 +448,17 @@ export default function App() {
     }
   };
 
-  const handleDownloadAll = async () => {
-    showToast('Download started in background...');
-    for (let i = 1; i <= Math.min(10, SURAHS.length); i++) {
-      const s = SURAHS[i - 1];
-      if (!isSurahDownloaded(s.id)) {
-        await handleToggleDownload(s);
-      }
-    }
-  };
-
   const handleDeleteOffline = async (qariId: string, surahId: number) => {
     await deleteOfflineSurah(qariId, surahId);
     await refreshOfflineList();
-    showToast('Removed recording');
+    showToast('অফলাইন তিলাওয়াত মোছা হয়েছে');
   };
 
   const handleClearAllOffline = async () => {
-    if (window.confirm('Delete all offline recordings?')) {
+    if (window.confirm('সকল অফলাইন সংরক্ষিত সূরা মুছে ফেলতে চান?')) {
       await clearAllOfflineData();
       await refreshOfflineList();
-      showToast('All offline recordings cleared');
+      showToast('সকল অফলাইন তিলাওয়াত পরিষ্কার করা হয়েছে');
     }
   };
 
@@ -405,10 +470,10 @@ export default function App() {
       const next = new Set(prev);
       if (next.has(currentSurah.id)) {
         next.delete(currentSurah.id);
-        showToast('Removed from favorites');
+        showToast('প্রিয় তালিকা থেকে বাদ দেওয়া হয়েছে');
       } else {
         next.add(currentSurah.id);
-        showToast('Added to favorites');
+        showToast('প্রিয় তালিকায় যুক্ত করা হয়েছে');
       }
       localStorage.setItem('ay_fav_surahs', JSON.stringify(Array.from(next)));
       return next;
@@ -429,27 +494,42 @@ export default function App() {
   };
 
   // -------------------------------------------------------------
-  // Navigation & Reciter Selection
+  // Qari Selection (Persists for subsequent visits!)
   // -------------------------------------------------------------
-  const handleSelectReciter = (qari: Qari) => {
-    setSelectedReciterDetail(qari);
+  const handleSelectQari = (qari: Qari) => {
     setCurrentQari(qari);
+    setSelectedReciterDetail(qari);
+    try {
+      localStorage.setItem('quran_selected_qari_id', qari.id);
+    } catch {}
+    setIsQariPickerOpen(false);
+    showToast(`${qari.nameBangla} নির্বাচিত হয়েছেন`);
   };
 
   const handlePlaySurahFromList = (surah: Surah) => {
     setCurrentSurah(surah);
+    if (!currentQari) {
+      setIsQariPickerOpen(true);
+      showToast('অনুগ্রহ করে তিলাওয়াত শুনতে একজন ক্বারী নির্বাচন করুন');
+      return;
+    }
     setIsPlaying(true);
   };
 
   const handleShufflePlay = () => {
     const randomSurah = SURAHS[Math.floor(Math.random() * SURAHS.length)];
     setCurrentSurah(randomSurah);
+    if (!currentQari) {
+      setIsQariPickerOpen(true);
+      showToast('অনুগ্রহ করে প্রথমে একজন ক্বারী নির্বাচন করুন');
+      return;
+    }
     setIsPlaying(true);
-    showToast(`Shuffled to Surah ${randomSurah.nameEnglish}`);
+    showToast(`এলোমেলো সূরা: ${randomSurah.nameBangla}`);
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-white selection:bg-white selection:text-black">
+    <div className="min-h-screen bg-[#09090c] text-white selection:bg-emerald-500 selection:text-black">
       {/* Hidden Native Audio Element */}
       <audio
         ref={audioRef}
@@ -464,31 +544,52 @@ export default function App() {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-white text-black text-xs font-bold shadow-2xl animate-fade-in flex items-center gap-1.5">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-emerald-500 text-slate-950 text-xs font-bold font-bangla shadow-2xl animate-fade-in flex items-center gap-1.5 border border-emerald-300">
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Main Tab Content Routing */}
-      {activeTab === 'home' && (
-        <HomeView
-          currentQari={currentQari}
+      {/* Main Tab Routing */}
+      {activeTab === 'player' && (
+        <MainAudioPlayerView
           currentSurah={currentSurah}
+          currentQari={currentQari}
           isPlaying={isPlaying}
-          onResumeReciter={(q) => {
-            setSelectedReciterDetail(q);
-            setActiveTab('reciters');
+          onPlayPause={handlePlayPause}
+          onNextSurah={handleNextSurah}
+          onPrevSurah={handlePrevSurah}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={handleSeek}
+          onSkipTime={handleSkipTime}
+          playbackSpeed={playbackSpeed}
+          onChangeSpeed={handleCycleSpeed}
+          repeatMode={repeatMode}
+          onCycleRepeatMode={handleCycleRepeatMode}
+          onOpenQariPicker={() => setIsQariPickerOpen(true)}
+          onSelectQari={handleSelectQari}
+          theme={currentTheme}
+          onSelectTheme={(t) => setCurrentTheme(t)}
+          onOpenSleepTimer={() => setIsSleepModalOpen(true)}
+          sleepTimerMinutes={sleepTimerMinutes}
+          sleepRemainingSeconds={sleepRemainingSeconds}
+          onOpenScriptModal={() => setIsScriptModalOpen(true)}
+          isFavoriteSurah={favoriteSurahIds.has(currentSurah.id)}
+          onToggleFavoriteSurah={handleToggleFavoriteSurah}
+          surahs={SURAHS}
+          onPlaySurah={handlePlaySurahFromList}
+          onShuffleSurahs={handleShufflePlay}
+          isDownloaded={isSurahDownloaded}
+          isDownloading={(id) => downloadingIds.has(id)}
+          downloadProgress={(id) => downloadProgressMap[id]}
+          onToggleDownload={handleToggleDownload}
+          onOpenSurahDetails={(s) => {
+            setCurrentSurah(s);
+            setIsScriptModalOpen(true);
           }}
-          onExploreNewReciters={() => {
-            setSelectedReciterDetail(null);
-            setActiveTab('reciters');
-          }}
-          onSelectReciter={(q) => {
-            setSelectedReciterDetail(q);
-            setCurrentQari(q);
-            setActiveTab('reciters');
-          }}
-          favoriteQariIds={favoriteQariIds}
+          onExpandPlayer={() => setIsFullPlayerOpen(true)}
+          volume={volume}
+          onChangeVolume={(v) => setVolume(v)}
         />
       )}
 
@@ -505,7 +606,11 @@ export default function App() {
             isDownloading={(id) => downloadingIds.has(id)}
             downloadProgress={(id) => downloadProgressMap[id]}
             onToggleDownload={handleToggleDownload}
-            onDownloadAll={handleDownloadAll}
+            onDownloadAll={() => {
+              if (selectedReciterDetail) {
+                showToast('ডাউনলোড ব্যাকগ্রাউন্ডে চলছে...');
+              }
+            }}
             onOpenSurahDetails={(s) => {
               setCurrentSurah(s);
               setIsScriptModalOpen(true);
@@ -513,7 +618,10 @@ export default function App() {
           />
         ) : (
           <RecitersView
-            onSelectReciter={handleSelectReciter}
+            onSelectReciter={(q) => {
+              handleSelectQari(q);
+              setSelectedReciterDetail(q);
+            }}
             favoriteQariIds={favoriteQariIds}
             onToggleFavoriteQari={handleToggleFavoriteQari}
           />
@@ -527,7 +635,7 @@ export default function App() {
             const s = SURAHS.find((item) => item.id === surahId);
             if (qariId) {
               const q = QARIS.find((item) => item.id === qariId);
-              if (q) setCurrentQari(q);
+              if (q) handleSelectQari(q);
             }
             if (s) {
               setCurrentSurah(s);
@@ -538,6 +646,19 @@ export default function App() {
           onClearAllOffline={handleClearAllOffline}
           favoriteSurahIds={favoriteSurahIds}
           surahs={SURAHS}
+        />
+      )}
+
+      {activeTab === 'search' && (
+        <SearchView
+          onSelectSurah={(s) => {
+            handlePlaySurahFromList(s);
+            setActiveTab('player');
+          }}
+          onSelectReciter={(q) => {
+            handleSelectQari(q);
+            setActiveTab('player');
+          }}
         />
       )}
 
@@ -553,22 +674,8 @@ export default function App() {
         />
       )}
 
-      {activeTab === 'search' && (
-        <SearchView
-          onSelectSurah={(s) => {
-            setCurrentSurah(s);
-            setIsPlaying(true);
-          }}
-          onSelectReciter={(q) => {
-            setSelectedReciterDetail(q);
-            setCurrentQari(q);
-            setActiveTab('reciters');
-          }}
-        />
-      )}
-
-      {/* Floating Mini Player (Shown when full player is minimized) */}
-      {!isFullPlayerOpen && currentSurah && (
+      {/* Floating Mini Player (Shown when on secondary tabs and player is not full screen) */}
+      {!isFullPlayerOpen && activeTab !== 'player' && currentSurah && (
         <MiniPlayer
           currentSurah={currentSurah}
           currentQari={currentQari}
@@ -589,13 +696,13 @@ export default function App() {
         />
       )}
 
-      {/* Bottom Navigation Bar (5 tabs matching video) */}
+      {/* Bottom Navigation Bar */}
       <BottomNav
         currentTab={activeTab}
         onTabChange={(tab) => {
           setActiveTab(tab);
-          if (tab === 'reciters' && !selectedReciterDetail) {
-            setSelectedReciterDetail(QARIS[0]); // default to Bader Al-Turki view like in video
+          if (tab === 'reciters' && !selectedReciterDetail && currentQari) {
+            setSelectedReciterDetail(currentQari);
           }
         }}
       />
@@ -624,14 +731,25 @@ export default function App() {
         onOpenScriptModal={() => setIsScriptModalOpen(true)}
         onOpenQueueModal={() => {
           setIsFullPlayerOpen(false);
-          setActiveTab('reciters');
+          setActiveTab('player');
         }}
         theme={currentTheme}
+        onSelectTheme={(t) => setCurrentTheme(t)}
         volume={volume}
         onChangeVolume={(v) => setVolume(v)}
+        onOpenQariPicker={() => setIsQariPickerOpen(true)}
       />
 
-      {/* Ambient Sound Selection Modal (Exact match to video 0:07 - 0:08) */}
+      {/* Quick Qari Selection Modal (Opens by default on first launch & when user clicks Change Qari) */}
+      <QuickQariPickerModal
+        isOpen={isQariPickerOpen}
+        onClose={() => setIsQariPickerOpen(false)}
+        currentQari={currentQari}
+        onSelectQari={handleSelectQari}
+        isInitialRequired={!currentQari}
+      />
+
+      {/* Ambient Sound Selection Modal */}
       <AmbientSoundModal
         isOpen={isAmbientModalOpen}
         onClose={() => setIsAmbientModalOpen(false)}

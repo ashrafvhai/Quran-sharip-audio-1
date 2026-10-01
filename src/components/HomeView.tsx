@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Sparkles, Star, Users, Flame, ChevronRight } from 'lucide-react';
+import { Play, Sparkles, Star, Users, Flame, ChevronRight, Mic2 } from 'lucide-react';
 import { QARIS } from '../data/qaris';
 import { Qari, Surah } from '../types/quran';
 
@@ -29,31 +29,36 @@ export const HomeView: React.FC<HomeViewProps> = ({
     <div className="min-h-screen bg-[#0a0a0c] text-white pb-36 animate-fade-in select-none">
       <div className="max-w-md mx-auto px-4 pt-6">
         {/* Title */}
-        <h1 className="text-3xl font-extrabold tracking-tight text-white mb-4">
-          Home
-        </h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white font-bangla">
+            কুরআন তিলাওয়াত
+          </h1>
+          <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+            ১১৪ সূরা
+          </span>
+        </div>
 
-        {/* 3 New Reciters Added Banner (Matches video 0:23) */}
+        {/* 3 New Reciters Added Banner */}
         <div
           onClick={onExploreNewReciters}
-          className="p-3.5 px-4 rounded-2xl bg-gradient-to-r from-blue-950/70 via-indigo-950/60 to-slate-900 border border-blue-500/20 mb-5 flex items-center justify-between cursor-pointer hover:border-blue-500/40 transition-all shadow-lg active:scale-[0.99]"
+          className="p-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-teal-950/60 to-slate-900 border border-emerald-500/30 mb-5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all shadow-lg active:scale-[0.99]"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
               <Users size={18} />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-white">3 new reciters added</h4>
-              <p className="text-[11px] text-white/50">Tap to explore</p>
+              <h4 className="text-xs font-bold text-white font-bangla">নতুন ক্বারী যুক্ত হয়েছে</h4>
+              <p className="text-[11px] text-white/50">দেখতে এখানে ট্যাপ করুন</p>
             </div>
           </div>
           <ChevronRight size={18} className="text-white/40" />
         </div>
 
-        {/* Recently Played Card (Matches video 0:24) */}
+        {/* Recently Played Card (বাংলা ও আরবী ও ছোট ইংলিশ) */}
         <div className="p-4 rounded-3xl bg-[#141418] border border-white/[0.08] mb-6 flex items-center justify-between shadow-xl">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-14 h-14 rounded-full overflow-hidden border border-white/20 shrink-0 bg-white/10">
+            <div className="w-14 h-14 rounded-full overflow-hidden border border-emerald-500/30 shrink-0 bg-white/10">
               {currentQari.avatarUrl ? (
                 <img
                   src={currentQari.avatarUrl}
@@ -68,38 +73,41 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
 
             <div className="min-w-0">
-              <span className="text-[11px] text-white/40 block">Recently Played</span>
-              <h3 className="text-base font-bold text-white truncate">
-                {currentQari.nameEnglish}
+              <span className="text-[11px] text-emerald-400 font-medium block font-bangla">
+                সর্বশেষ পঠিত
+              </span>
+              <h3 className="text-base font-bold text-white truncate font-bangla">
+                ক্বারী {currentQari.nameBangla}
               </h3>
-              <p className="text-xs text-white/60 truncate mt-0.5">
-                Surah {currentSurah?.nameEnglish || 'Al-Fatihah'}
+              <p className="text-xs text-white/70 truncate mt-0.5">
+                সূরা {currentSurah?.nameBangla || 'আল-ফাতিহা'} ({currentSurah?.nameArabic})
+                <span className="text-[10px] text-white/40 ml-1">· {currentSurah?.nameEnglish}</span>
               </p>
             </div>
           </div>
 
           <button
             onClick={() => onResumeReciter(currentQari)}
-            className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
+            className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-xs font-bold text-slate-950 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 font-bangla shadow-md"
           >
             <Play size={12} fill="currentColor" />
-            <span>Continue</span>
+            <span>শুনুন</span>
           </button>
         </div>
 
-        {/* Your Favourites (Matches video 0:24) */}
+        {/* Your Favourites */}
         {favoriteReciters.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+              <h3 className="text-sm font-bold text-white flex items-center gap-1.5 font-bangla">
                 <Star size={14} className="text-amber-400 fill-amber-400" />
-                <span>Your favourites</span>
+                <span>আপনার পছন্দের ক্বারীগণ</span>
               </h3>
               <button
                 onClick={onExploreNewReciters}
                 className="text-xs text-white/50 hover:text-white cursor-pointer"
               >
-                See all
+                সব দেখুন
               </button>
             </div>
             <div className="flex items-center gap-4 overflow-x-auto pb-1 scrollbar-none">
@@ -122,8 +130,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       </div>
                     )}
                   </div>
-                  <span className="text-xs font-semibold text-white/90 truncate max-w-[80px]">
-                    {q.nameEnglish.replace('Sheikh ', '')}
+                  <span className="text-xs font-semibold text-white/90 truncate max-w-[85px] font-bangla">
+                    {q.nameBangla.replace('শাইখ ', '').replace('ক্বারী ', '')}
+                  </span>
+                  <span className="text-[10px] text-white/40 truncate max-w-[85px]">
+                    {q.nameEnglish}
                   </span>
                 </button>
               ))}
@@ -134,16 +145,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* New Reciters Row */}
         <div className="mb-7">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-white">New reciters</h3>
+            <h3 className="text-sm font-bold text-white font-bangla">বিশ্বনন্দিত ক্বারীগণ</h3>
             <button
               onClick={onExploreNewReciters}
               className="text-xs text-white/50 hover:text-white cursor-pointer"
             >
-              See all
+              সব দেখুন
             </button>
           </div>
           <div className="flex items-center gap-4 overflow-x-auto pb-1 scrollbar-none">
-            {newReciters.slice(0, 5).map((q) => (
+            {newReciters.slice(0, 6).map((q) => (
               <button
                 key={q.id}
                 onClick={() => onSelectReciter(q)}
@@ -165,43 +176,46 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     NEW
                   </span>
                 </div>
-                <span className="text-xs font-semibold text-white/90 truncate max-w-[80px]">
-                  {q.nameEnglish.replace('Sheikh ', '')}
+                <span className="text-xs font-semibold text-white/90 truncate max-w-[85px] font-bangla">
+                  {q.nameBangla.replace('শাইখ ', '').replace('ক্বারী ', '')}
+                </span>
+                <span className="text-[10px] text-white/40 truncate max-w-[85px]">
+                  {q.nameEnglish}
                 </span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Insights Section (Matches video 0:25 - 0:26) */}
+        {/* Insights Section */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-              <span>Insights</span>
+            <h3 className="text-sm font-bold text-white flex items-center gap-1.5 font-bangla">
+              <span>তিলাওয়াত ট্র্যাকার (Insights)</span>
             </h3>
-            <span className="text-xs text-white/50">See more</span>
+            <span className="text-xs text-white/50">দৈনিক লক্ষ্য</span>
           </div>
 
           {/* 3 Metric cards */}
           <div className="grid grid-cols-3 gap-2.5 mb-4">
             <div className="p-3 rounded-2xl bg-[#141418] border border-white/[0.08] text-center">
-              <span className="text-[10px] text-white/40 block mb-0.5">Streak</span>
-              <span className="text-sm font-extrabold text-white">0 days</span>
+              <span className="text-[10px] text-white/40 block mb-0.5 font-bangla">ধারাবাহিকতা</span>
+              <span className="text-sm font-extrabold text-white">১ দিন</span>
             </div>
             <div className="p-3 rounded-2xl bg-[#141418] border border-white/[0.08] text-center">
-              <span className="text-[10px] text-white/40 block mb-0.5">This week</span>
-              <span className="text-sm font-extrabold text-white">19 min</span>
+              <span className="text-[10px] text-white/40 block mb-0.5 font-bangla">এই সপ্তাহে</span>
+              <span className="text-sm font-extrabold text-emerald-400">১৯ মিনিট</span>
             </div>
             <div className="p-3 rounded-2xl bg-[#141418] border border-white/[0.08] text-center">
-              <span className="text-[10px] text-white/40 block mb-0.5">Record</span>
-              <span className="text-sm font-extrabold text-white">1 day</span>
+              <span className="text-[10px] text-white/40 block mb-0.5 font-bangla">সর্বোচ্চ রেকর্ড</span>
+              <span className="text-sm font-extrabold text-white">১ দিন</span>
             </div>
           </div>
 
-          {/* Today's Listening Goal Card (Matches video 0:26) */}
+          {/* Today's Listening Goal Card */}
           <div className="p-5 rounded-3xl bg-[#141418] border border-white/[0.08] shadow-xl text-center">
-            <h4 className="text-xs font-medium text-white/60 mb-3">
-              Today's listening
+            <h4 className="text-xs font-medium text-white/60 mb-3 font-bangla">
+              আজকের কুরআন শ্রবণ লক্ষ্য
             </h4>
 
             {/* Circular Gauge Center */}
@@ -223,7 +237,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   stroke="#10b981"
                   strokeWidth="8"
                   strokeDasharray="264"
-                  strokeDashoffset="150"
+                  strokeDashoffset="120"
                   strokeLinecap="round"
                   fill="none"
                 />
@@ -231,10 +245,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-2xl font-black text-white font-mono">
-                  4:10
+                  ৪:১০
                 </span>
-                <span className="text-[10px] text-white/50">
-                  of your 10-minute goal
+                <span className="text-[10px] text-white/50 font-bangla">
+                  ১০ মিনিট লক্ষ্যের মধ্যে
                 </span>
               </div>
             </div>
@@ -242,17 +256,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Days of the Week Dot Indicators */}
             <div className="flex items-center justify-center gap-3 sm:gap-4 mb-5 text-[11px] text-white/50">
               {[
-                { day: 'Mon', active: true },
-                { day: 'Tue', active: true },
-                { day: 'Wed', active: true },
-                { day: 'Thu', active: true },
-                { day: 'Fri', active: true },
-                { day: 'Sat', active: false },
-                { day: 'Sun', active: false }
+                { day: 'সোম', active: true },
+                { day: 'মঙ্গল', active: true },
+                { day: 'বুধ', active: true },
+                { day: 'বৃহঃ', active: true },
+                { day: 'শুক্র', active: true },
+                { day: 'শনি', active: false },
+                { day: 'রবি', active: false }
               ].map((item, idx) => (
                 <div key={idx} className="flex flex-col items-center gap-1.5">
-                  <span className={`w-2.5 h-2.5 rounded-full ${item.active ? 'bg-red-500' : 'bg-white/10'}`} />
-                  <span className="text-[10px]">{item.day}</span>
+                  <span className={`w-2.5 h-2.5 rounded-full ${item.active ? 'bg-emerald-400' : 'bg-white/10'}`} />
+                  <span className="text-[10px] font-bangla">{item.day}</span>
                 </div>
               ))}
             </div>
@@ -260,10 +274,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Continue Listening Primary Button */}
             <button
               onClick={() => onResumeReciter(currentQari)}
-              className="w-full py-3 rounded-2xl bg-white hover:bg-white/95 text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all cursor-pointer"
+              className="w-full py-3 rounded-2xl bg-white hover:bg-white/95 text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all cursor-pointer font-bangla"
             >
               <Play size={14} fill="currentColor" />
-              <span>Continue Listening</span>
+              <span>তিলাওয়াত চালিয়ে যান</span>
             </button>
           </div>
         </div>

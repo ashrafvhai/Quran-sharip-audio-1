@@ -48,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Quran-Sharif-Noorani-APK
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
       - name: Create GitHub Release and Tag
@@ -58,32 +58,18 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG_NAME="v1.0.${{ github.run_number }}"
-          APK_PATH=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
           
-          echo "Found APK at: $APK_PATH"
           echo "Creating Release with Tag: $TAG_NAME"
           
           gh release create "$TAG_NAME" "$APK_PATH#Quran-Sharif-Noorani.apk" \
             --title "নূরানী কুরআন - Release $TAG_NAME" \
-            --notes "## 📱 নূরানী কুরআন (Noorani Quran) Android APK
-
-- **Release Tag:** \`$TAG_NAME\`
-- **Build:** #${{ github.run_number }}
-- **APK Download:** নিচে Assets সেকশন থেকে \`Quran-Sharif-Noorani.apk\` ফাইলে ক্লিক করে ডাউনলোড করুন।" \
+            --notes "নূরানী কুরআন অ্যান্ড্রয়েড অ্যাপ (APK)। নিচে Assets সেকশন থেকে ডাউনলোড করুন।" \
             --latest
 
       - name: Print Download Instructions
         if: always()
         run: |
-          TAG_NAME="v1.0.${{ github.run_number }}"
-          echo "=========================================="
-          echo "APK Build Finished!"
-          echo "Tag: $TAG_NAME"
-          echo "Artifact: Quran-Sharif-Noorani-APK"
-          echo "=========================================="
-          
           echo "## 🎉 নূরানী কুরআন APK প্রস্তুত!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "আপনার অ্যান্ড্রয়েড APK সফলভাবে বিল্ড হয়েছে:" >> $GITHUB_STEP_SUMMARY
-          echo "1. **GitHub Releases:** আপনার রিপোজিটরির **Releases** ট্যাবে যান এবং \`Quran-Sharif-Noorani.apk\` ডাউনলোড করুন।" >> $GITHUB_STEP_SUMMARY
-          echo "2. **Actions Artifacts:** এই পেইজের উপরের **Artifacts** সেকশনে \`Quran-Sharif-Noorani-APK\` জিপ ফাইলে ক্লিক করেও ডাউনলোড করতে পারবেন।" >> $GITHUB_STEP_SUMMARY
+          echo "আপনার অ্যান্ড্রয়েড APK সফলভাবে বিল্ড হয়েছে।" >> $GITHUB_STEP_SUMMARY

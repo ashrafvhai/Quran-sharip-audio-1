@@ -24,10 +24,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Node dependencies
         run: npm install
@@ -39,16 +39,17 @@ jobs:
 
       - name: Build Android Debug APK
         run: |
-          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Quran-Sharif-Noorani-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/**/*.apk
           retention-days: 30
 
       - name: Create GitHub Release and Tag
@@ -58,8 +59,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG_NAME="v1.0.${{ github.run_number }}"
-          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          APK_PATH=$(find android/app/build/outputs/apk -name "*.apk" | head -n 1)
           
+          echo "Found APK at: $APK_PATH"
           echo "Creating Release with Tag: $TAG_NAME"
           
           gh release create "$TAG_NAME" "$APK_PATH#Quran-Sharif-Noorani.apk" \

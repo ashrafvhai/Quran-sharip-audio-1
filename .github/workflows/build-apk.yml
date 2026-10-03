@@ -18,20 +18,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Install Node dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Build Web Assets and Sync Android
-        env:
-          CI: true
-        run: |
-          npm run build
-          npx cap sync android
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -39,121 +29,107 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Verify Java environment
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Node dependencies
         run: |
-          echo "Checking Java version..."
-          java -version
-          echo "JAVA_HOME is: $JAVA_HOME"
-          JAVA_MAJOR=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}' | awk -F '.' '{print $1}')
-          echo "Detected Java major version: $JAVA_MAJOR"
-          if [ -z "$JAVA_MAJOR" ] || [ "$JAVA_MAJOR" -lt 17 ]; then
-            echo "Error: Java 17 or higher is required, detected: $JAVA_MAJOR"
-            exit 1
+          echo "Installing npm dependencies..."
+          npm install --legacy-peer-deps
+
+      - name: Build Web App and Sync Android
+        env:
+          CI: true
+        run: |
+          echo "Building React web application..."
+          npm run build
+          
+          if [ ! -d "android" ] || [ ! -f "android/build.gradle" ]; then
+            echo "Android platform not found or incomplete. Adding Android via Capacitor..."
+            npx cap add android
+          fi
+          
+          echo "Syncing web assets with Capacitor Android..."
+          npx cap sync android
+
+      - name: Grant execute permission for gradlew
+        run: |
+          if [ -f "android/gradlew" ]; then
+            chmod +x android/gradlew
+          else
+            echo "Warning: android/gradlew not found, ensuring wrapper exists..."
+            cd android && gradle wrapper && chmod +x gradlew && cd ..
           fi
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Make Gradle Wrapper Executable
-        run: chmod +x android/gradlew
-
-      - name: Build Debug APK
+      - name: Build Android Debug APK
         working-directory: ./android
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
-
-      - name: Verify APK exists
         run: |
-          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
-          if [ ! -f "$APK_PATH" ]; then
-            echo "Error: Expected APK not found at $APK_PATH"
-            echo "Searching android/app/build/outputs/apk:"
-            find android/app/build/outputs/apk -name "*.apk" || true
+          echo "Building Debug APK with Gradle..."
+          ./gradlew assembleDebug --stacktrace --no-daemon
+
+      - name: Locate APK
+        id: locate_apk
+        run: |
+          FOUND_APK=$(find android/app/build/outputs/apk -name "*.apk" | head -n 1)
+          if [ -z "$FOUND_APK" ] || [ ! -f "$FOUND_APK" ]; then
+            echo "Error: No APK found after build!"
+            find android -name "*.apk" || true
             exit 1
           fi
-          echo "Verified APK at: $APK_PATH"
-          ls -lh "$APK_PATH"
+          echo "Found APK at: $FOUND_APK"
+          ls -lh "$FOUND_APK"
+          
+          ASSET_NAME="Quran-Noorani-v${{ github.run_number }}.apk"
+          RUNNER_TMP="${RUNNER_TEMP:-/tmp}/apk_output"
+          mkdir -p "$RUNNER_TMP"
+          cp "$FOUND_APK" "$RUNNER_TMP/$ASSET_NAME"
+          
+          echo "apk_path=$FOUND_APK" >> "$GITHUB_OUTPUT"
+          echo "asset_path=$RUNNER_TMP/$ASSET_NAME" >> "$GITHUB_OUTPUT"
+          echo "asset_name=$ASSET_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Upload debug APK artifact
+      - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: quran-noorani-apk
+          path: ${{ steps.locate_apk.outputs.apk_path }}
           if-no-files-found: error
           retention-days: 30
 
-      - name: Prepare APK release asset
-        id: prepare_asset
-        run: |
-          RUNNER_TMP_DIR="${RUNNER_TEMP:-/tmp}/release_assets"
-          mkdir -p "$RUNNER_TMP_DIR"
-          
-          REPO_RAW="${{ github.repository }}"
-          REPO_NAME=$(echo "$REPO_RAW" | awk -F'/' '{print $2}' | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
-          if [ -z "$REPO_NAME" ]; then
-            REPO_NAME="noorani-quran"
-          fi
-          
-          ASSET_NAME="${REPO_NAME}-debug-build-${{ github.run_number }}.apk"
-          ASSET_PATH="${RUNNER_TMP_DIR}/${ASSET_NAME}"
-          
-          cp "android/app/build/outputs/apk/debug/app-debug.apk" "$ASSET_PATH"
-          
-          echo "asset_path=${ASSET_PATH}" >> "$GITHUB_OUTPUT"
-          echo "asset_name=${ASSET_NAME}" >> "$GITHUB_OUTPUT"
-          echo "Prepared release asset: $ASSET_NAME"
-
-      - name: Publish APK to GitHub Releases
+      - name: Create GitHub Release and Tag
         id: create_release
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_NAME="debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}"
-          RELEASE_TITLE="Debug APK Build #${{ github.run_number }}"
-          ASSET_PATH="${{ steps.prepare_asset.outputs.asset_path }}"
-          ASSET_NAME="${{ steps.prepare_asset.outputs.asset_name }}"
+          TAG_NAME="v1.0.${{ github.run_number }}"
+          RELEASE_TITLE="নূরানী কুরআন - Android APK v1.0.${{ github.run_number }}"
+          ASSET_PATH="${{ steps.locate_apk.outputs.asset_path }}"
+          ASSET_NAME="${{ steps.locate_apk.outputs.asset_name }}"
           
-          echo "Creating GitHub Release with tag: $TAG_NAME"
+          echo "Publishing GitHub Release with Tag: $TAG_NAME"
           
           gh release create "$TAG_NAME" "$ASSET_PATH#$ASSET_NAME" \
             --title "$RELEASE_TITLE" \
-            --notes "### 📱 নূরানী কুরআন (Noorani Quran) Debug APK
+            --notes "## 📱 নূরানী কুরআন (Noorani Quran) Android APK
             
           - **Release Tag:** \`$TAG_NAME\`
-          - **Build Run Number:** #${{ github.run_number }} (Attempt #${{ github.run_attempt }})
-          - **Source Commit:** \`${{ github.sha }}\`
-          - **File Name:** \`$ASSET_NAME\`
+          - **Build:** #${{ github.run_number }}
+          - **APK File:** \`$ASSET_NAME\`
           
-          > 💡 **নোট:** এটি সরাসরি আপনার অ্যান্ড্রয়েড ফোনে ইনস্টল করে ব্যবহারের জন্য স্বয়ংক্রিয়ভাবে জেনারেট করা টেস্ট/ডিবাগ APK।" \
-            --target "${{ github.sha }}" \
+          ### 📥 কীভাবে ফোনে ইনস্টল করবেন:
+          1. নিচে Assets সেকশন থেকে \`$ASSET_NAME\` ফাইলে ক্লিক করে ডাউনলোড করুন।
+          2. ফোনে ডাউনলোড সম্পন্ন হলে ফাইলটিতে ক্লিক করে Install দিন।" \
             --latest
 
-      - name: Report APK download result
+      - name: Summary & Download Info
         if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG_NAME="debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}"
-          ASSET_NAME="${{ steps.prepare_asset.outputs.asset_name }}"
+          TAG_NAME="v1.0.${{ github.run_number }}"
+          ASSET_NAME="${{ steps.locate_apk.outputs.asset_name }}"
           
-          if [ "${{ steps.create_release.outcome }}" = "success" ]; then
-            RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG_NAME}"
-            echo "=========================================="
-            echo "🎉 GitHub Release Published Successfully!"
-            echo "Release Tag: $TAG_NAME"
-            echo "Asset Name: $ASSET_NAME"
-            echo "Download URL: $RELEASE_URL"
-            echo "=========================================="
-            
-            echo "## 🎉 Android APK Release Ready!" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Your Android APK is ready for download:" >> $GITHUB_STEP_SUMMARY
-            echo "- 📥 **[Download APK from GitHub Releases](${RELEASE_URL})**" >> $GITHUB_STEP_SUMMARY
-            echo "- **Asset:** \`${ASSET_NAME}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- **Tag:** \`${TAG_NAME}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- **Actions Artifact:** \`app-debug-apk\` is also available as a backup." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "::warning::Release publishing encountered an error, but the APK was successfully built."
-            echo "## ⚠️ APK Built - Artifact Available" >> $GITHUB_STEP_SUMMARY
-            echo "APK build succeeded! You can download the APK from the **Artifacts** section of this workflow run: \`app-debug-apk\`." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "## 📱 APK বিল্ড সম্পন্ন হয়েছে!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **APK ফাইলের নাম:** \`${ASSET_NAME}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitHub Releases Tag:** \`${TAG_NAME}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **সরাসরি ডাউনলোড:** এই রানটির নিচের **Artifacts** সেকশনে \`quran-noorani-apk\` ফাইলটি সরাসরি পাবেন অথবা আপনার রিপোজিটরির **Releases** সেকশনে যান।" >> $GITHUB_STEP_SUMMARY
